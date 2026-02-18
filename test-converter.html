@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Converter Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #0078d4;
+        }
+        pre {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .pass { color: green; font-weight: bold; }
+        .fail { color: red; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>CSV to Markdown Converter - Test Suite</h1>
+
+    <div class="test-section">
+        <h2>Test 1: Sample Survey CSV</h2>
+        <div id="test1-result"></div>
+        <h3>Generated Markdown:</h3>
+        <pre id="test1-output"></pre>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 2: Question Detection</h2>
+        <div id="test2-result"></div>
+        <pre id="test2-output"></pre>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 3: Header Detection</h2>
+        <div id="test3-result"></div>
+        <pre id="test3-output"></pre>
+    </div>
+
+    <script>
+        const sampleCSV = `Question,Total,Group A,Group B
+S1: How satisfied are you with our service?,,,
+,Total,Group A,Group B
+,N=100,N=50,N=50
+Very satisfied,45%,50%,40%
+Somewhat satisfied,35%,30%,40%
+Not satisfied,20%,20%,20%
+S2: Would you recommend us to a friend?,,,
+,Total,Group A,Group B
+,N=100,N=50,N=50
+Yes,75%,80%,70%
+No,25%,20%,30%
+[Age] What is your age group?,,,
+,Total,Group A,Group B
+,N=100,N=50,N=50
+18-24,15%,20%,10%
+25-34,30%,25%,35%
+35-44,25%,25%,25%
+45+,30%,30%,30%`;
+
+        // Copy the converter functions from app.html
+        function parseCSV(csvText) {
+            const lines = csvText.split(/\r?\n/);
+            const rows = [];
+            for (let line of lines) {
+                const row = parseCSVLine(line);
+                rows.push(row);
+            }
+            return rows;
+        }
+
+        function parseCSVLine(line) {
+            const cells = [];
+            let currentCell = '';
+            let inQuotes = false;
+
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                const nextChar = line[i + 1];
+
+                if (char === '"') {
+                    if (inQuotes && nextChar === '"') {
+                        currentCell += '"';
+                        i++;
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    cells.push(currentCell.trim());
+                    currentCell = '';
+                } else {
+                    currentCell += char;
+                }
+            }
+            cells.push(currentCell.trim());
+            return cells;
+        }
+
+        function firstNonEmptyCell(row) {
+            for (let cell of row) {
+                const cellStr = String(cell).trim();
+                if (cellStr && cellStr.toLowerCase() !== 'nan') {
+                    return cellStr;
+                }
+            }
+            return '';
+        }
+
+        function isQuestionRow(row) {
+            const firstCell = firstNonEmptyCell(row);
+            const patterns = [
+                /^[A-Z]\d+:/,
+                /^\[.*\]/,
+                /\?$/,
+                /^CTP:/,
+                /^h[A-Z]/,
+                /^DV_/
+            ];
+
+            for (let pattern of patterns) {
+                if (pattern.test(firstCell)) {
+                    return true;
+                }
+            }
+
+            if (firstCell.length > 50) {
+                const keywords = ['what', 'how', 'which', 'please', 'following', 'who', 'when', 'where', 'why'];
+                if (keywords.some(word => firstCell.toLowerCase().includes(word))) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function isHeaderRow(row) {
+            const firstCell = firstNonEmptyCell(row);
+            const rowText = row.join(' ');
+
+            if (firstCell === 'Total' && /N=/.test(rowText)) {
+                return true;
+            }
+
+            if (/Total \(A\)/.test(rowText)) {
+                return true;
+            }
+
+            const specificHeaders = [
+                'Pro-to-Pro Switchers (B)',
+                'Software-to-Pro Switchers (C)',
+                'Pro-to-Software Switchers (D)'
+            ];
+
+            if (specificHeaders.some(h => rowText.includes(h))) {
+                return true;
+            }
+            return false;
+        }
+
+        function isDataRow(row) {
+            const firstCell = firstNonEmptyCell(row);
+
+            if (!firstCell || firstCell.toLowerCase() === 'nan') {
+                return false;
+            }
+
+            if (isQuestionRow(row)) {
+                return false;
+            }
+
+            const nonEmptyCells = row.filter(cell => {
+                const cellStr = String(cell).trim();
+                return cellStr && cellStr.toLowerCase() !== 'nan';
+            });
+
+            const numericCells = nonEmptyCells.filter(cell => /\d/.test(cell));
+            if (numericCells.length >= 2) {
+                return true;
+            }
+
+            const responseCategories = [
+                'Total', 'Mean', 'Median', 'Standard Deviation',
+                'Yes', 'No', 'Male', 'Female', 'Other', 'Man', 'Woman',
+                'Very important', 'Somewhat important', 'Not important',
+                'Strongly agree', 'Agree', 'Disagree',
+                'Very satisfied', 'Somewhat satisfied', 'Not satisfied',
+                'Non-binary', 'Gender fluid', 'Prefer not to say',
+                'Count'
+            ];
+
+            if (responseCategories.some(cat => firstCell.includes(cat))) {
+                return true;
+            }
+
+            return firstCell.length > 0 && firstCell.length < 120;
+        }
+
+        // Run tests
+        function runTests() {
+            // Test 1: Parse and convert sample CSV
+            try {
+                const rows = parseCSV(sampleCSV);
+                const questionCount = rows.filter(r => isQuestionRow(r)).length;
+
+                document.getElementById('test1-result').innerHTML =
+                    `<span class="pass">PASS</span> - Parsed ${rows.length} rows, found ${questionCount} questions`;
+
+                // Show sample output
+                let output = 'Detected Questions:\n';
+                rows.forEach((row, i) => {
+                    if (isQuestionRow(row)) {
+                        output += `Row ${i}: ${firstNonEmptyCell(row)}\n`;
+                    }
+                });
+                document.getElementById('test1-output').textContent = output;
+            } catch (e) {
+                document.getElementById('test1-result').innerHTML =
+                    `<span class="fail">FAIL</span> - ${e.message}`;
+            }
+
+            // Test 2: Question detection
+            const testQuestions = [
+                ['S1: Test question', '', ''],
+                ['[Age] Age group', '', ''],
+                ['Do you like this?', '', ''],
+                ['DV_HiddenVar: Test', '', ''],
+                ['Regular data row', '50%', '60%']
+            ];
+
+            let test2Results = '';
+            testQuestions.forEach((row, i) => {
+                const isQ = isQuestionRow(row);
+                const expected = i < 4; // First 4 should be questions
+                const result = isQ === expected ? '✓' : '✗';
+                test2Results += `${result} Row ${i}: "${row[0]}" - ${isQ ? 'QUESTION' : 'NOT QUESTION'}\n`;
+            });
+
+            const allPassed = testQuestions.every((row, i) => {
+                const isQ = isQuestionRow(row);
+                const expected = i < 4;
+                return isQ === expected;
+            });
+
+            document.getElementById('test2-result').innerHTML =
+                allPassed ? '<span class="pass">PASS</span>' : '<span class="fail">FAIL</span>';
+            document.getElementById('test2-output').textContent = test2Results;
+
+            // Test 3: Header detection
+            const testHeaders = [
+                ['Total', 'N=100', 'N=50'],
+                ['', 'Total (A)', 'Pro-to-Pro Switchers (B)'],
+                ['Question text', '', ''],
+                ['Regular data', '50%', '60%']
+            ];
+
+            let test3Results = '';
+            testHeaders.forEach((row, i) => {
+                const isH = isHeaderRow(row);
+                const expected = i < 2; // First 2 should be headers
+                const result = isH === expected ? '✓' : '✗';
+                test3Results += `${result} Row ${i}: [${row.join(', ')}] - ${isH ? 'HEADER' : 'NOT HEADER'}\n`;
+            });
+
+            const allHeadersPassed = testHeaders.every((row, i) => {
+                const isH = isHeaderRow(row);
+                const expected = i < 2;
+                return isH === expected;
+            });
+
+            document.getElementById('test3-result').innerHTML =
+                allHeadersPassed ? '<span class="pass">PASS</span>' : '<span class="fail">FAIL</span>';
+            document.getElementById('test3-output').textContent = test3Results;
+        }
+
+        // Run tests on load
+        window.addEventListener('load', runTests);
+    </script>
+</body>
+</html>

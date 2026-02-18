@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Survey CSV to Markdown Converter</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .section {
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            color: #444;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            resize: vertical;
+            background-color: #fafafa;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #0078d4;
+            background-color: white;
+        }
+
+        .file-input-wrapper {
+            margin-bottom: 15px;
+        }
+
+        input[type="file"] {
+            display: block;
+            margin-top: 8px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            width: 100%;
+            background-color: white;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background-color: #0078d4;
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background-color: #005a9e;
+        }
+
+        .btn-secondary {
+            background-color: #fff;
+            color: #333;
+            border: 1px solid #ddd;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background-color: #f5f5f5;
+        }
+
+        .btn-success {
+            background-color: #107c10;
+            color: white;
+        }
+
+        .btn-success:hover:not(:disabled) {
+            background-color: #0d5f0d;
+        }
+
+        .status-message {
+            padding: 12px 16px;
+            border-radius: 4px;
+            margin: 15px 0;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .status-message.show {
+            display: block;
+        }
+
+        .status-message.success {
+            background-color: #dff6dd;
+            color: #107c10;
+            border-left: 4px solid #107c10;
+        }
+
+        .status-message.error {
+            background-color: #fde7e9;
+            color: #c50f1f;
+            border-left: 4px solid #c50f1f;
+        }
+
+        .status-message.info {
+            background-color: #e1f3ff;
+            color: #0078d4;
+            border-left: 4px solid #0078d4;
+        }
+
+        .output-section {
+            margin-top: 20px;
+        }
+
+        #outputMarkdown {
+            min-height: 400px;
+            background-color: #f9f9f9;
+        }
+
+        .help-text {
+            color: #666;
+            font-size: 13px;
+            margin-top: 6px;
+            font-style: italic;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 0.6s linear infinite;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Survey CSV to Markdown Converter</h1>
+        <p class="subtitle">Convert survey CSV data into formatted Markdown tables with question-aware structure</p>
+
+        <div id="statusMessage" class="status-message"></div>
+
+        <div class="section">
+            <label class="section-title" for="csvInput">Input CSV Data</label>
+            <textarea
+                id="csvInput"
+                placeholder="Paste your CSV data here or use the file upload below..."
+            ></textarea>
+            <p class="help-text">Paste CSV text directly or upload a file</p>
+
+            <div class="file-input-wrapper">
+                <label class="section-title" for="fileInput">Or Upload CSV File</label>
+                <input type="file" id="fileInput" accept=".csv,text/csv" />
+            </div>
+        </div>
+
+        <div class="button-group">
+            <button id="convertBtn" class="btn-primary">Convert to Markdown</button>
+            <button id="copyBtn" class="btn-secondary" disabled>Copy to Clipboard</button>
+            <button id="downloadBtn" class="btn-success" disabled>Download as .md</button>
+        </div>
+
+        <div class="output-section">
+            <label class="section-title" for="outputMarkdown">Generated Markdown</label>
+            <textarea
+                id="outputMarkdown"
+                placeholder="Converted Markdown will appear here..."
+                readonly
+            ></textarea>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let currentMarkdown = '';
+
+        // DOM elements
+        const csvInput = document.getElementById('csvInput');
+        const fileInput = document.getElementById('fileInput');
+        const convertBtn = document.getElementById('convertBtn');
+        const copyBtn = document.getElementById('copyBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const outputMarkdown = document.getElementById('outputMarkdown');
+        const statusMessage = document.getElementById('statusMessage');
+
+        // Event listeners
+        fileInput.addEventListener('change', handleFileUpload);
+        convertBtn.addEventListener('click', handleConvert);
+        copyBtn.addEventListener('click', handleCopy);
+        downloadBtn.addEventListener('click', handleDownload);
+
+        // File upload handler
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (!file.name.endsWith('.csv')) {
+                showStatus('error', 'Please upload a CSV file');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                csvInput.value = e.target.result;
+                showStatus('info', `File "${file.name}" loaded successfully`);
+            };
+            reader.onerror = function() {
+                showStatus('error', 'Error reading file');
+            };
+            reader.readAsText(file);
+        }
+
+        // Convert button handler
+        function handleConvert() {
+            const csvText = csvInput.value.trim();
+
+            if (!csvText) {
+                showStatus('error', 'Please paste CSV data or upload a file');
+                return;
+            }
+
+            try {
+                // Show loading state
+                convertBtn.disabled = true;
+                convertBtn.innerHTML = 'Converting<span class="loading"></span>';
+
+                // Small delay to allow UI update
+                setTimeout(() => {
+                    try {
+                        const markdown = convertCSVToMarkdown(csvText);
+                        currentMarkdown = markdown;
+                        outputMarkdown.value = markdown;
+
+                        // Enable action buttons
+                        copyBtn.disabled = false;
+                        downloadBtn.disabled = false;
+
+                        showStatus('success', 'CSV converted successfully!');
+                    } catch (error) {
+                        showStatus('error', `Conversion error: ${error.message}`);
+                        currentMarkdown = '';
+                        outputMarkdown.value = '';
+                        copyBtn.disabled = true;
+                        downloadBtn.disabled = true;
+                    } finally {
+                        convertBtn.disabled = false;
+                        convertBtn.textContent = 'Convert to Markdown';
+                    }
+                }, 50);
+            } catch (error) {
+                showStatus('error', `Error: ${error.message}`);
+                convertBtn.disabled = false;
+                convertBtn.textContent = 'Convert to Markdown';
+            }
+        }
+
+        // Copy to clipboard handler
+        async function handleCopy() {
+            if (!currentMarkdown) return;
+
+            try {
+                await navigator.clipboard.writeText(currentMarkdown);
+                showStatus('success', 'Markdown copied to clipboard!');
+            } catch (error) {
+                // Fallback for older browsers
+                outputMarkdown.select();
+                document.execCommand('copy');
+                showStatus('success', 'Markdown copied to clipboard!');
+            }
+        }
+
+        // Download handler
+        function handleDownload() {
+            if (!currentMarkdown) return;
+
+            const blob = new Blob([currentMarkdown], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+
+            // Generate filename with timestamp
+            const timestamp = new Date().toISOString().slice(0, 10);
+            a.download = `survey_${timestamp}.md`;
+
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            showStatus('success', 'Markdown file downloaded!');
+        }
+
+        // Show status message
+        function showStatus(type, message) {
+            statusMessage.className = `status-message ${type} show`;
+            statusMessage.textContent = message;
+
+            setTimeout(() => {
+                statusMessage.classList.remove('show');
+            }, 5000);
+        }
+
+        // CSV Parser
+        function parseCSV(csvText) {
+            const lines = csvText.split(/\r?\n/);
+            const rows = [];
+
+            for (let line of lines) {
+                const row = parseCSVLine(line);
+                rows.push(row);
+            }
+
+            return rows;
+        }
+
+        function parseCSVLine(line) {
+            const cells = [];
+            let currentCell = '';
+            let inQuotes = false;
+
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                const nextChar = line[i + 1];
+
+                if (char === '"') {
+                    if (inQuotes && nextChar === '"') {
+                        // Escaped quote
+                        currentCell += '"';
+                        i++; // Skip next quote
+                    } else {
+                        // Toggle quote mode
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    // End of cell
+                    cells.push(currentCell.trim());
+                    currentCell = '';
+                } else {
+                    currentCell += char;
+                }
+            }
+
+            // Add last cell
+            cells.push(currentCell.trim());
+
+            return cells;
+        }
+
+        // Get first non-empty cell from row
+        function firstNonEmptyCell(row) {
+            for (let cell of row) {
+                const cellStr = String(cell).trim();
+                if (cellStr && cellStr.toLowerCase() !== 'nan') {
+                    return cellStr;
+                }
+            }
+            return '';
+        }
+
+        // Question detection
+        function isQuestionRow(row) {
+            const firstCell = firstNonEmptyCell(row);
+
+            // Question patterns
+            const patterns = [
+                /^[A-Z]\d+:/,        // S1:, A1:, B1:, etc.
+                /^\[.*\]/,           // [Age], [Gender], etc.
+                /\?$/,               // Ends with question mark
+                /^CTP:/,             // CTP questions
+                /^h[A-Z]/,           // hSample, hB1_Flag, etc.
+                /^DV_/               // DV_ hidden variables
+            ];
+
+            for (let pattern of patterns) {
+                if (pattern.test(firstCell)) {
+                    return true;
+                }
+            }
+
+            // Long descriptive text likely a question
+            if (firstCell.length > 50) {
+                const keywords = ['what', 'how', 'which', 'please', 'following', 'who', 'when', 'where', 'why'];
+                if (keywords.some(word => firstCell.toLowerCase().includes(word))) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // Header detection
+        function isHeaderRow(row) {
+            const firstCell = firstNonEmptyCell(row);
+            const rowText = row.join(' ');
+
+            // Total rows with N= pattern
+            if (firstCell === 'Total' && /N=/.test(rowText)) {
+                return true;
+            }
+
+            // Descriptive headers with switcher labels
+            if (/Total \(A\)/.test(rowText)) {
+                return true;
+            }
+
+            const specificHeaders = [
+                'Pro-to-Pro Switchers (B)',
+                'Software-to-Pro Switchers (C)',
+                'Pro-to-Software Switchers (D)'
+            ];
+
+            if (specificHeaders.some(h => rowText.includes(h))) {
+                return true;
+            }
+
+            return false;
+        }
+
+        // Data row detection
+        function isDataRow(row) {
+            const firstCell = firstNonEmptyCell(row);
+
+            // Skip empty rows
+            if (!firstCell || firstCell.toLowerCase() === 'nan') {
+                return false;
+            }
+
+            // Don't treat question rows as data
+            if (isQuestionRow(row)) {
+                return false;
+            }
+
+            // Count numeric cells
+            const nonEmptyCells = row.filter(cell => {
+                const cellStr = String(cell).trim();
+                return cellStr && cellStr.toLowerCase() !== 'nan';
+            });
+
+            const numericCells = nonEmptyCells.filter(cell => /\d/.test(cell));
+            if (numericCells.length >= 2) {
+                return true;
+            }
+
+            // Common response categories
+            const responseCategories = [
+                'Total', 'Mean', 'Median', 'Standard Deviation',
+                'Yes', 'No', 'Male', 'Female', 'Other', 'Man', 'Woman',
+                'Very important', 'Somewhat important', 'Not important',
+                'Strongly agree', 'Agree', 'Disagree',
+                'Very satisfied', 'Somewhat satisfied', 'Not satisfied',
+                'Non-binary', 'Gender fluid', 'Prefer not to say',
+                'Count'
+            ];
+
+            if (responseCategories.some(cat => firstCell.includes(cat))) {
+                return true;
+            }
+
+            // Reasonable length for response option
+            return firstCell.length > 0 && firstCell.length < 120;
+        }
+
+        // Main conversion function
+        function convertCSVToMarkdown(csvText) {
+            const rows = parseCSV(csvText);
+
+            if (rows.length === 0) {
+                return '# Survey Data\n\n*This file is empty.*\n';
+            }
+
+            const filename = fileInput.files[0]?.name || 'Survey Data';
+            const fileTitle = filename.replace(/_/g, ' ').replace('.csv', '').replace(/\b\w/g, c => c.toUpperCase());
+
+            let markdown = `# ${fileTitle}\n\n`;
+            markdown += `**Total Records:** ${rows.length}  \n`;
+            markdown += `**Total Columns:** ${rows[0]?.length || 0}  \n`;
+            markdown += `**Generated:** ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}  \n\n`;
+            markdown += `## Survey Questions and Responses\n\n`;
+
+            // Find question boundaries
+            const questionBoundaries = [];
+            for (let i = 0; i < rows.length; i++) {
+                if (isQuestionRow(rows[i])) {
+                    questionBoundaries.push(i);
+                }
+            }
+
+            // Process each question section
+            let questionNumber = 0;
+            for (let i = 0; i < questionBoundaries.length; i++) {
+                const questionStart = questionBoundaries[i];
+                const questionEnd = i + 1 < questionBoundaries.length ? questionBoundaries[i + 1] : rows.length;
+
+                const questionText = firstNonEmptyCell(rows[questionStart]);
+
+                // Find headers and data within section
+                const allHeaderRows = [];
+                const sectionData = [];
+
+                for (let rowIdx = questionStart + 1; rowIdx < questionEnd; rowIdx++) {
+                    const row = rows[rowIdx];
+
+                    if (isHeaderRow(row)) {
+                        const headers = row.map(cell => {
+                            const cellStr = String(cell).trim();
+                            return (cellStr && cellStr.toLowerCase() !== 'nan') ? cellStr : '';
+                        });
+                        allHeaderRows.push(headers);
+                    } else if (isDataRow(row)) {
+                        const dataRow = row.map(cell => {
+                            const cellStr = String(cell).trim();
+                            return (cellStr && cellStr.toLowerCase() !== 'nan') ? cellStr : '';
+                        });
+                        if (dataRow.some(cell => cell)) {
+                            sectionData.push(dataRow);
+                        }
+                    }
+                }
+
+                // Look for N= rows in surrounding context
+                if (allHeaderRows.length === 0 || !allHeaderRows.some(h => h.join(' ').includes('N='))) {
+                    // Search nearby rows for N= pattern
+                    const searchStart = Math.max(0, questionStart - 6);
+                    const searchEnd = Math.min(rows.length, questionEnd + 2);
+
+                    for (let rowIdx = searchStart; rowIdx < searchEnd; rowIdx++) {
+                        const row = rows[rowIdx];
+                        const rowText = row.join(' ');
+                        if (/N=\d+/.test(rowText)) {
+                            const headers = row.map(cell => {
+                                const cellStr = String(cell).trim();
+                                return (cellStr && cellStr.toLowerCase() !== 'nan') ? cellStr : '';
+                            });
+                            if (!allHeaderRows.some(h => h.join('|') === headers.join('|'))) {
+                                allHeaderRows.push(headers);
+                            }
+                        }
+                    }
+                }
+
+                // Combine header rows
+                const headerRows = [];
+                let descriptiveHeaders = null;
+                let totalHeaders = null;
+
+                const switcherLabels = [
+                    'Pro-to-Pro Switchers (B)',
+                    'Software-to-Pro Switchers (C)',
+                    'Pro-to-Software Switchers (D)'
+                ];
+
+                for (let headerRow of allHeaderRows) {
+                    const headerText = headerRow.join(' ');
+
+                    if (/Total \(A\)/.test(headerText) || switcherLabels.some(lbl => headerText.includes(lbl))) {
+                        descriptiveHeaders = headerRow;
+                    }
+
+                    if (/N=/.test(headerText) || /N=\d+/.test(headerText)) {
+                        totalHeaders = headerRow;
+                    }
+                }
+
+                if (descriptiveHeaders) {
+                    headerRows.push(descriptiveHeaders);
+                }
+                if (totalHeaders) {
+                    headerRows.push(totalHeaders);
+                }
+
+                // Generate question section
+                if (headerRows.length > 0 || sectionData.length > 0) {
+                    questionNumber++;
+                    markdown += formatQuestionSection(questionNumber, questionText, headerRows, sectionData);
+                }
+            }
+
+            // Add summary
+            markdown += `## Summary\n\n`;
+            markdown += `**Total Questions Processed:** ${questionNumber}  \n`;
+            markdown += `**Source File:** ${filename}  \n`;
+
+            return markdown;
+        }
+
+        // Format a single question section
+        function formatQuestionSection(questionNum, question, headerRows, dataRows) {
+            let content = `### Question ${questionNum}\n\n`;
+            content += `**${question}**\n\n`;
+
+            if (headerRows.length === 0 && dataRows.length === 0) {
+                content += '*No response data available for this question.*\n\n';
+                return content;
+            }
+
+            // Determine table headers
+            let tableHeaders;
+            if (headerRows.length > 0) {
+                tableHeaders = headerRows[0];
+            } else {
+                const maxCols = Math.max(...dataRows.map(row => row.length));
+                tableHeaders = Array.from({length: maxCols}, (_, i) => `Column ${i + 1}`);
+            }
+
+            if (dataRows.length > 0) {
+                content += '#### Response Data\n\n';
+
+                // Create markdown table
+                content += '| ' + tableHeaders.join(' | ') + ' |\n';
+                content += '|' + tableHeaders.map(() => '---').join('|') + '|\n';
+
+                // Add secondary header row (N= row) if present
+                if (headerRows.length > 1) {
+                    const secondary = headerRows[1];
+                    while (secondary.length < tableHeaders.length) {
+                        secondary.push('');
+                    }
+                    const secRow = secondary.slice(0, tableHeaders.length);
+                    content += '| ' + secRow.join(' | ') + ' |\n';
+                }
+
+                // Add data rows
+                for (let dataRow of dataRows) {
+                    while (dataRow.length < tableHeaders.length) {
+                        dataRow.push('');
+                    }
+
+                    const cleanRow = dataRow.slice(0, tableHeaders.length).map(cell => {
+                        return String(cell).replace(/\|/g, '\\|').replace(/\n/g, ' ');
+                    });
+
+                    content += '| ' + cleanRow.join(' | ') + ' |\n';
+                }
+
+                content += '\n';
+            }
+
+            return content;
+        }
+    </script>
+</body>
+</html>
