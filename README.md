@@ -4,7 +4,7 @@ A browser-based HTML/JavaScript application hosted on SharePoint for converting 
 
 ## Quick Start
 
-1. **Push this repo to GitHub** → Enable GitHub Pages on `/dist` folder
+1. **Push this repo to GitHub** → Enable GitHub Pages on `/docs` folder
 2. **Get your URL**: `https://yourusername.github.io/repo-name/app.html`
 3. **Embed in SharePoint** using iframe (see [Deployment](#deployment) for details)
 
@@ -53,7 +53,7 @@ SharePoint's Embed web part blocks inline `<script>` tags for security. By hosti
 2. **Enable GitHub Pages**
    - Go to repository Settings → Pages
    - Under "Source", select: `main` branch
-   - Under "Folder", select: `/dist`
+   - Under "Folder", select: `/docs`
    - Click "Save"
    - GitHub will provide your URL: `https://yourusername.github.io/your-repo-name/app.html`
 
@@ -81,11 +81,11 @@ SharePoint's Embed web part blocks inline `<script>` tags for security. By hosti
 
 ### Step 3: Updating the App
 
-When you make changes to `dist/app.html`:
+When you make changes to `docs/app.html`:
 
 1. **Commit and push changes**
    ```bash
-   git add dist/app.html
+   git add docs/app.html
    git commit -m "Update app"
    git push
    ```
@@ -98,7 +98,7 @@ When you make changes to `dist/app.html`:
 
 ### Alternative: Local Testing
 
-Simply open `dist/app.html` directly in any modern web browser. No server required for local development and testing.
+Simply open `docs/app.html` directly in any modern web browser. No server required for local development and testing.
 
 ## Usage
 
@@ -157,8 +157,8 @@ Generated Markdown includes:
 ## Repository Structure
 
 ```
-typescript/officeScript/
-├── dist/
+CsvConverter/
+├── docs/
 │   └── app.html              # Production app (served by GitHub Pages)
 ├── README.md                 # This file
 ├── package.json              # TypeScript development dependencies
@@ -166,7 +166,7 @@ typescript/officeScript/
 ```
 
 **GitHub Pages Configuration:**
-- Serves only the `/dist` folder
+- Serves only the `/docs` folder (GitHub Pages requirement)
 - All other files remain in the repo but aren't publicly served
 - This keeps the deployment clean while maintaining full project context
 
@@ -193,7 +193,7 @@ Test with `sample_survey.csv` (simple) and `TurboTax_sample.csv` (complex). Veri
 
 ## Customization
 
-Edit `dist/app.html` to customize:
+Edit `docs/app.html` to customize:
 1. Question detection patterns (regex)
 2. Header label expectations
 3. Response category recognition
